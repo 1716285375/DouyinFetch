@@ -106,7 +106,7 @@
         </div>
       </div>
 
-      <div v-if="!userInfo && !isLoading && !errorMessage && userId" class="empty-state">
+      <div v-if="errorMessage && userId" class="empty-state">
         <i class="fas fa-user-slash"></i>
         <p>未查询到用户信息，请尝试其他ID</p>
       </div>
@@ -153,7 +153,7 @@
           }
 
           try {
-            const response = await fetch(`http://120.26.55.56:8848/user/${userId.value}`);
+            const response = await fetch(`http://127.0.0.1:8848/user/${userId.value}`);
 
             if (!response.ok) {
               let errorData;
