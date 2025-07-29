@@ -15,7 +15,7 @@ import uvicorn
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from info import get_user_info
+from info import get_user_info, get_sec_uid
 
 app = FastAPI()
 
@@ -33,9 +33,11 @@ app.add_middleware(
     allow_headers=["*"],  # 允许所有头部
 )
 
-@app.get("/user/{hash_name}")
-async def get_user_home_page_info(hash_name: str):
-    user = await get_user_info(hash_name)
+@app.get("/user/{sec_uid}/{room_id}")
+async def get_user_home_page_info(sec_uid: str, room_id: str):
+    if room_id:
+        sec_uid = await get_sec_uid(room_id)
+    user = await get_user_info(sec_uid)
     # 返回 JSONResponse
     if user is not None:
         return JSONResponse(content=user, status_code=200)

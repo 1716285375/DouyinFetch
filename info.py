@@ -1,10 +1,38 @@
 import pprint
+import re
 from typing import Any
 from httpx import AsyncClient
 import asyncio
 
 
-async def get_user_info(name: str) -> dict[str, Any] | None:
+async def get_sec_uid(room_id: str) -> str:
+    headers = {
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
+    }
+    cookies = {
+        "__ac_nonce": "0678a618700d5394bd29"
+    }
+    url = f'https://live.douyin.com/{room_id}'
+    # 获取html数据
+    async with AsyncClient(default_encoding='utf-8') as client:
+        response = await client.get(url, headers=headers, cookies=cookies)
+        response.raise_for_status()
+        # 响应状态
+        if response.status_code == 200:
+            res = response.text
+            # >>> 获取直播房间信息
+            room_id = re.findall(r'\\"roomId\\":\\"(\d+)\\"', res)[0]
+            print(room_id)
+            sec_uid = re.search(r'\\"sec_uid\\":\\"([^"]+)\\"', res).group(1)
+            if sec_uid:
+                return sec_uid
+            else:
+                return ''
+        else:
+            return ''
+
+
+async def get_user_info(sec_uid: str) -> dict[str, Any] | None:
     """
     获取抖音账户主页信息
     :param name:
@@ -170,7 +198,8 @@ async def get_user_info(name: str) -> dict[str, Any] | None:
 
 async def main():
     # 测试
-    res = await get_user_info('MS4wLjABAAAACdtHOv8XS_X_PTuqJ3WReO4ka7pBWg7fmzG4wjiIZVkUKFOVtbhizl9GkpdOJ-O1')
+    # res = await get_user_info('MS4wLjABAAAACdtHOv8XS_X_PTuqJ3WReO4ka7pBWg7fmzG4wjiIZVkUKFOVtbhizl9GkpdOJ-O1')\
+    res = await get_sec_uid('52466127183')
     pprint.pprint(res)
 
 if __name__ == '__main__':
