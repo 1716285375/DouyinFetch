@@ -77,7 +77,7 @@
             </div>
             <div class="info-item">
               <span class="info-label"><i class="fas fa-map-marker-alt"></i> 地区</span>
-              <span class="info-value">{{ userInfo.location }}</span>
+              <span class="info-value">{{ userInfo.location.split(/[:：]/).pop().trim() }}</span>
             </div>
           </div>
 

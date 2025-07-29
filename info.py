@@ -199,7 +199,7 @@ async def get_user_info(sec_uid: str) -> dict[str, Any] | None:
 async def main():
     # 测试
     # res = await get_user_info('MS4wLjABAAAACdtHOv8XS_X_PTuqJ3WReO4ka7pBWg7fmzG4wjiIZVkUKFOVtbhizl9GkpdOJ-O1')\
-    res = await get_sec_uid('52466127183')
+    res = await get_sec_uid('462118228930')
     pprint.pprint(res)
 
 if __name__ == '__main__':
