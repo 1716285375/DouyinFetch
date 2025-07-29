@@ -202,7 +202,7 @@
             } catch (err) {
               console.error('轮询失败:', err);
             }
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 3600000));
           }
         };
 
