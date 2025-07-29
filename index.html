@@ -140,6 +140,7 @@
         const fetchUserInfo = async (isManual = false) => {
           if (!userId.value.trim()) {
             errorMessage.value = '请输入有效的用户ID';
+            console.log(userId.value);
             return;
           }
 
