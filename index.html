@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>抖音用户主页信息查询</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div id="app"></div>
+
+  <script type="text/x-template" id="user-info-template">
+    <div class="user-info-app">
+      <header class="app-header">
+        <div class="header-glow"></div>
+        <h1><i class="fas fa-microchip"></i> 抖音用户主页信息实时监控</h1>
+        <p>输入用户ID，获取实时数据</p>
+      </header>
+
+      <div class="search-container">
+        <input
+          type="text"
+          v-model="userId"
+          placeholder="请输入用户ID"
+          @keyup.enter="fetchUserInfo(false)"
+          class="user-id-input"
+        />
+        <button
+          @click="fetchUserInfo(true)"
+          class="search-btn"
+          :disabled="isLoading || !userId"
+        >
+          <span v-if="!isLoading"><i class="fas fa-search"></i> 检索</span>
+          <span v-else><i class="fas fa-spinner fa-spin"></i> 处理中...</span>
+        </button>
+      </div>
+
+      <div v-if="isLoading" class="loading-indicator">
+        <div class="spinner"></div>
+        <p>正在获取用户信息...</p>
+      </div>
+
+      <div v-if="errorMessage" class="error-message">
+        <i class="fas fa-exclamation-triangle"></i> {{ errorMessage }}
+      </div>
+
+      <div
+        v-if="userInfo && !isLoading && !errorMessage"
+        class="user-card"
+        :class="{ 'fade-in': userInfo }"
+      >
+        <div class="card-decoration top-left"></div>
+        <div class="card-decoration top-right"></div>
+        <div class="card-decoration bottom-left"></div>
+        <div class="card-decoration bottom-right"></div>
+
+        <div class="avatar-container">
+          <div class="avatar-glow"></div>
+          <img
+            :src="userInfo.avatar_thumb.url_list"
+            :alt="userInfo.nickname"
+            class="user-avatar"
+            @error="handleAvatarError"
+          />
+          <div class="user-name">{{ userInfo.nickname }}</div>
+<!--          暂时不用-->
+          <div class="user-id-tag"></div>
+        </div>
+
+        <div class="user-basic-info">
+          <div class="info-row">
+            <div class="info-item">
+              <span class="info-label"><i class="fas fa-venus-mars"></i> 性别</span>
+              <span class="info-value">{{ userInfo.gender === 1 ? '男' : '女' }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label"><i class="fas fa-map-marker-alt"></i> 地区</span>
+              <span class="info-value">{{ userInfo.location }}</span>
+            </div>
+          </div>
+
+          <div class="info-row">
+            <div class="info-item full-width">
+              <span class="info-label"><i class="fas fa-clock"></i> 当前时间</span>
+              <span class="info-value">{{ formattedCurrentTime }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="fan-stats">
+          <div class="stat-item">
+            <div class="stat-value">{{ formatNumber(userInfo.follower_count) }}</div>
+            <div class="stat-label"><i class="fas fa-users"></i> 当前粉丝数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ formatNumber(userInfo.max_follower_count) }}</div>
+            <div class="stat-label"><i class="fas fa-trophy"></i> 历史最高粉丝</div>
+          </div>
+        </div>
+
+        <div class="signature-section">
+          <h3><i class="fas fa-quote-left"></i> 个性签名</h3>
+          <p class="signature">{{ userInfo.signature || '该用户未设置个性签名' }}</p>
+        </div>
+      </div>
+
+      <div v-if="!userInfo && !isLoading && !errorMessage && userId" class="empty-state">
+        <i class="fas fa-user-slash"></i>
+        <p>未查询到用户信息，请尝试其他ID</p>
+      </div>
+    </div>
+  </script>
+
+  <script>
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+
+    const app = createApp({
+      template: '#user-info-template',
+      setup() {
+        const userId = ref('');
+        const isLoading = ref(false);
+        const errorMessage = ref('');
+        const userInfo = ref(null);
+        const currentTime = ref(new Date());
+        const isFirstLoad = ref(true);
+
+        const formattedCurrentTime = computed(() => {
+          return currentTime.value.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          });
+        });
+
+        const fetchUserInfo = async (isManual = false) => {
+          if (!userId.value.trim()) {
+            errorMessage.value = '请输入有效的用户ID';
+            return;
+          }
+
+          isFirstLoad.value = false;
+          errorMessage.value = '';
+
+          // 仅手动查询时显示加载动画
+          if (isManual) {
+            isLoading.value = true; // 手动查询：显示动画
+          }
+
+          try {
+            const response = await fetch(`http://120.26.55.56:8848/user/${userId.value}`);
+
+            if (!response.ok) {
+              let errorData;
+              try {
+                errorData = await response.json();
+              } catch (parseError) {
+                errorData = { error: `服务器错误 (${response.status})` };
+              }
+              throw new Error(errorData.error || `HTTP错误 ${response.status}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+              throw new Error('响应不是有效的JSON格式');
+            }
+
+            const data = await response.json();
+            // 数据更新时才替换，避免无意义的UI刷新
+            if (JSON.stringify(data) !== JSON.stringify(userInfo.value)) {
+                userInfo.value = data;
+            }
+          } catch (err) {
+            errorMessage.value = err.message || '查询失败，请稍后重试';
+            userInfo.value = null;
+          } finally {
+            // 仅手动查询时关闭加载动画
+            if (isManual) {
+                isLoading.value = false;
+            }
+          }
+        };
+
+        const handleAvatarError = (e) => {
+          e.target.src = 'https://via.placeholder.com/160?text=NO+IMAGE';
+        };
+
+        const formatNumber = (num) => {
+          return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        };
+
+        const startPolling = async () => {
+          while (true) {
+            try {
+                if (!isFirstLoad.value && userId.value.trim()) {
+                    await fetchUserInfo();
+                }
+            } catch (err) {
+              console.error('轮询失败:', err);
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        };
+
+        onMounted(() => {
+          const timer = setInterval(() => {
+            currentTime.value = new Date();
+          }, 1000);
+          startPolling();
+
+          return () => clearInterval(timer);
+        });
+
+        watch(userId, () => {
+          errorMessage.value = '';
+        });
+
+        return {
+          userId,
+          isLoading,
+          errorMessage,
+          userInfo,
+          formattedCurrentTime,
+          fetchUserInfo,
+          handleAvatarError,
+          formatNumber
+        };
+      }
+    });
+
+    app.mount('#app');
+  </script>
+  <style>
+      /* 七彩主题核心配色 */
+:root {
+  --gradient-1: #ff9a9e;
+  --gradient-2: #fad0c4;
+  --gradient-3: #fad0c4;
+  --gradient-4: #d4fc79;
+  --gradient-5: #96e6a1;
+  --gradient-6: #84feb3;
+  --gradient-7: #80dfee;
+  --gradient-8: #8ea1e1;
+  --gradient-9: #cf94da;
+  --gradient-10: #d48373;
+
+  --bg-primary: #1a1a2e;
+  --bg-secondary: rgba(30, 35, 60, 0.85);
+  --text-primary: #f0f4f8;
+  --text-secondary: #b8c5d6;
+  --card-bg: rgba(30, 35, 60, 0.7);
+  --surface: rgba(40, 45, 75, 0.6);
+}
+
+/* 全局渐变定义 */
+.gradient-text {
+  background: linear-gradient(
+    90deg,
+    var(--gradient-1),
+    var(--gradient-3),
+    var(--gradient-5),
+    var(--gradient-7),
+    var(--gradient-9)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+}
+
+/* 移除 @extend 相关，改为直接在元素中定义渐变边框逻辑 */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(circle at 100% 100%, rgba(255, 154, 158, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 0% 0%, rgba(207, 148, 218, 0.08) 0%, transparent 50%);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.grid-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 40px 40px;
+  background-image:
+    linear-gradient(to right, rgba(138, 197, 237, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(138, 197, 237, 0.05) 1px, transparent 1px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.user-info-app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* 头部样式 */
+.app-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  position: relative;
+}
+
+.header-glow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 2px;
+  background: linear-gradient(90deg,
+    var(--gradient-1),
+    var(--gradient-3),
+    var(--gradient-5),
+    var(--gradient-7),
+    var(--gradient-9)
+  );
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+  filter: blur(10px);
+  opacity: 0.7;
+}
+
+.app-header h1 {
+  margin-bottom: 10px;
+  font-size: 2rem;
+  text-shadow: 0 0 15px rgba(255, 154, 158, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  /* 直接应用渐变文本样式 */
+  background: linear-gradient(
+    90deg,
+    var(--gradient-1),
+    var(--gradient-3),
+    var(--gradient-5),
+    var(--gradient-7),
+    var(--gradient-9)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+}
+
+.app-header p {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin: 0;
+  opacity: 0.8;
+}
+
+/* 查询区域样式 */
+.search-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.user-id-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px 15px;
+  background-color: var(--surface);
+  border: 1px solid rgba(136, 183, 213, 0.3);
+  border-radius: 6px;
+  font-size: 1rem;
+  color: var(--text-primary);
+  transition: all 0.3s;
+}
+
+.user-id-input:focus {
+  outline: none;
+  border-color: var(--gradient-7);
+  box-shadow: 0 0 8px rgba(128, 223, 238, 0.3);
+}
+
+.search-btn {
+  padding: 12px 24px;
+  background-color: rgba(40, 45, 75, 0.6);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 直接定义渐变边框（替代 @extend .gradient-border） */
+  position: relative;
+  z-index: 0;
+  background-color: var(--surface);
+}
+
+/* 搜索按钮的渐变边框效果 */
+.search-btn::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  background: linear-gradient(
+    45deg,
+    var(--gradient-1),
+    var(--gradient-3),
+    var(--gradient-5),
+    var(--gradient-7),
+    var(--gradient-9),
+    var(--gradient-1)
+  );
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+  z-index: -1;
+  filter: blur(2px);
+  opacity: 0.8;
+}
+
+.search-btn:hover:not(:disabled) {
+  background-color: rgba(50, 55, 85, 0.8);
+}
+
+.search-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.search-btn:disabled {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+  background-color: rgba(60, 65, 95, 0.3);
+  cursor: not-allowed;
+}
+
+/* 加载指示器 */
+.loading-indicator {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  margin: 0 auto;
+  border: 3px solid rgba(136, 183, 213, 0.2);
+  border-left-color: var(--gradient-7);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 错误提示 */
+.error-message {
+  background-color: rgba(255, 154, 158, 0.1);
+  color: var(--gradient-1);
+  padding: 15px 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 154, 158, 0.3);
+  animation: fadeIn 0.3s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-secondary);
+  background-color: var(--surface);
+  border-radius: 6px;
+  border: 1px dashed rgba(136, 183, 213, 0.3);
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  background: linear-gradient(
+    90deg,
+    var(--gradient-1),
+    var(--gradient-5),
+    var(--gradient-9)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0.6;
+}
+
+/* 用户卡片样式 */
+.user-card {
+  background-color: var(--card-bg);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: all 0.3s;
+  position: relative;
+  backdrop-filter: blur(10px);
+  /* 直接定义渐变边框（替代 @extend .gradient-border） */
+  border: 1px solid rgba(136, 183, 213, 0.15);
+  background-clip: padding-box;
+  background-color: var(--card-bg);
+  position: relative;
+  z-index: 0;
+}
+
+/* 用户卡片的渐变边框效果 */
+.user-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 8px;
+  background: linear-gradient(
+    45deg,
+    var(--gradient-1),
+    var(--gradient-3),
+    var(--gradient-5),
+    var(--gradient-7),
+    var(--gradient-9),
+    var(--gradient-1)
+  );
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+  z-index: -1;
+  filter: blur(2px);
+  opacity: 0.8;
+}
+
+.user-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.card-decoration {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  background: linear-gradient(
+    to right bottom,
+    transparent 50%,
+    var(--gradient-5) 50%
+  );
+  opacity: 0.6;
+}
+
+.top-left {
+  top: 0;
+  left: 0;
+  transform: rotate(0deg);
+}
+
+.top-right {
+  top: 0;
+  right: 0;
+  transform: rotate(90deg);
+}
+
+.bottom-left {
+  bottom: 0;
+  left: 0;
+  transform: rotate(-90deg);
+}
+
+.bottom-right {
+  bottom: 0;
+  right: 0;
+  transform: rotate(180deg);
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 头像区域（已修复显示问题） */
+.avatar-container {
+  text-align: center;
+  padding: 30px 20px;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--surface) 100%);
+  position: relative;
+}
+
+.avatar-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--gradient-5),
+    var(--gradient-7),
+    transparent 70%
+  );
+  filter: blur(25px);
+  opacity: 0.2; /* 降低透明度避免遮挡 */
+  z-index: 0; /* 置于头像下方 */
+  animation: glowShift 15s ease infinite;
+}
+
+@keyframes glowShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.user-avatar {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  object-fit: cover;
+  /* 修复：使用普通渐变边框，移除mask属性 */
+  border: 2px solid;
+  border-image: linear-gradient(
+    to right,
+    var(--gradient-3),
+    var(--gradient-7),
+    var(--gradient-9)
+  ) 1;
+  box-shadow: 0 0 20px rgba(128, 223, 238, 0.2);
+  transition: transform 0.3s;
+  position: relative;
+  z-index: 1; /* 置于光晕上方 */
+}
+
+.user-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(128, 223, 238, 0.3);
+}
+
+.user-name {
+  margin-top: 15px;
+  font-size: 1.8rem;
+  font-weight: 600;
+  /* 直接应用渐变文本样式 */
+  background: linear-gradient(
+    90deg,
+    var(--gradient-1),
+    var(--gradient-3),
+    var(--gradient-5),
+    var(--gradient-7),
+    var(--gradient-9)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+  text-shadow: 0 0 15px rgba(255, 173, 177, 0.2);
+}
+
+.user-id-tag {
+  color: var(--text-secondary);
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  margin-top: 5px;
+  display: inline-block;
+}
+
+/* 基本信息区域 */
+.user-basic-info {
+  padding: 20px 30px;
+  border-bottom: 1px solid rgba(136, 183, 213, 0.1);
+}
+
+.info-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 15px;
+}
+
+.info-item {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  border-left: 2px solid;
+  border-image: linear-gradient(
+    to bottom,
+    var(--gradient-7),
+    var(--gradient-9)
+  ) 1;
+}
+
+.info-item.full-width {
+  flex: 100%;
+  min-width: 100%;
+}
+
+.info-label {
+  display: inline-block;
+  color: var(--gradient-7);
+  margin-right: 8px;
+  font-weight: 500;
+}
+
+.info-value {
+  color: var(--text-primary);
+  font-weight: 400;
+}
+
+/* 粉丝统计 */
+.fan-stats {
+  display: flex;
+  padding: 25px 30px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(136, 183, 213, 0.1);
+}
+
+.stat-item {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  position: relative;
+}
+
+.stat-item::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 0;
+  height: calc(100% - 20px);
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--gradient-5),
+    transparent
+  );
+}
+
+.stat-item:last-child::after {
+  display: none;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  /* 直接应用渐变文本样式 */
+  background: linear-gradient(
+    90deg,
+    var(--gradient-1),
+    var(--gradient-3),
+    var(--gradient-5),
+    var(--gradient-7),
+    var(--gradient-9)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+  text-shadow: 0 0 10px rgba(128, 223, 238, 0.2);
+}
+
+.stat-label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+/* 个性签名 */
+.signature-section {
+  padding: 25px 30px;
+}
+
+.signature-section h3 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 直接应用渐变文本样式 */
+  background: linear-gradient(
+    90deg,
+    var(--gradient-1),
+    var(--gradient-3),
+    var(--gradient-5),
+    var(--gradient-7),
+    var(--gradient-9)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+}
+
+.signature {
+  color: var(--text-primary);
+  line-height: 1.6;
+  padding: 15px;
+  background-color: rgba(0, 0, 0, 0.15);
+  border-radius: 6px;
+  border-left: 3px solid;
+  border-image: linear-gradient(
+    to bottom,
+    var(--gradient-3),
+    var(--gradient-5)
+  ) 1;
+  min-height: 60px;
+  font-family: monospace;
+}
+
+/* 响应式调整 */
+@media (max-width: 600px) {
+  .user-avatar {
+    width: 120px;
+    height: 120px;
+  }
+
+  .avatar-glow {
+    width: 140px;
+    height: 140px;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .info-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-container {
+    flex-direction: column;
+  }
+
+  .search-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+  </style>
+</body>
+</html>
