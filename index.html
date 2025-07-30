@@ -24,7 +24,7 @@
           type="text"
           v-model="userId"
           placeholder="请输入用户ID"
-          @keyup.enter="fetchUserInfo(false)"
+          @keyup.enter="fetchUserInfo(true)"
           class="user-id-input"
         />
         <button
@@ -65,8 +65,7 @@
             @error="handleAvatarError"
           />
           <div class="user-name">{{ userInfo.nickname }}</div>
-<!--          暂时不用-->
-          <div class="user-id-tag"></div>
+          <div class="user-id-tag"> {{userId}}</div>
         </div>
 
         <div class="user-basic-info">
@@ -76,8 +75,23 @@
               <span class="info-value">{{ userInfo.gender === 1 ? '男' : '女' }}</span>
             </div>
             <div class="info-item">
+              <span class="info-label"><i class="fas fa-birthday-cake"></i> 年龄</span>
+              <span class="info-value">{{ userInfo.user_age === -1 ? '' : userInfo.user_age }}</span>
+            </div>
+            <div class="info-item">
               <span class="info-label"><i class="fas fa-map-marker-alt"></i> 地区</span>
               <span class="info-value">{{ userInfo.location === null ? '' : userInfo.location.split(/[:：]/).pop().trim() }}</span>
+            </div>
+          </div>
+
+          <div class="info-row">
+            <div class="info-item">
+              <span class="info-label"><i class="fas fa-video"></i> 作品</span>
+              <span class="info-value">{{ userInfo.aweme_count }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label"><i class="fas fa-heart"></i> 点赞</span>
+              <span class="info-value">{{ formatNumber(userInfo.total_favorited) }}</span>
             </div>
           </div>
 
@@ -708,7 +722,7 @@ body {
 
 .info-item {
   flex: 1;
-  min-width: 200px;
+  min-width: 100px;
   padding: 10px;
   background-color: rgba(0, 0, 0, 0.15);
   border-radius: 6px;
