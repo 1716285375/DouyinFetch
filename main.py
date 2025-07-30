@@ -33,11 +33,10 @@ app.add_middleware(
     allow_headers=["*"],  # 允许所有头部
 )
 
-@app.get("/user/{sec_uid}/{room_id}")
-async def get_user_home_page_info(sec_uid: str, room_id: str):
-    if room_id:
-        sec_uid = await get_sec_uid(room_id)
-    user = await get_user_info(sec_uid)
+@app.get("/user/{user_id}")
+async def get_user_home_page_info(user_id: str):
+    sec_uid_ = await get_sec_uid(user_id)
+    user = await get_user_info(sec_uid_)
     # 返回 JSONResponse
     if user is not None:
         return JSONResponse(content=user, status_code=200)

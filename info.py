@@ -5,14 +5,14 @@ from httpx import AsyncClient
 import asyncio
 
 
-async def get_sec_uid(room_id: str) -> str:
+async def get_sec_uid(user_account_id: str) -> str:
     headers = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0'
     }
     cookies = {
         "__ac_nonce": "0678a618700d5394bd29"
     }
-    url = f'https://live.douyin.com/{room_id}'
+    url = f'https://live.douyin.com/{user_account_id}'
     # 获取html数据
     async with AsyncClient(default_encoding='utf-8') as client:
         response = await client.get(url, headers=headers, cookies=cookies)
@@ -21,8 +21,8 @@ async def get_sec_uid(room_id: str) -> str:
         if response.status_code == 200:
             res = response.text
             # >>> 获取直播房间信息
-            room_id = re.findall(r'\\"roomId\\":\\"(\d+)\\"', res)[0]
-            print(room_id)
+            # room_id = re.findall(r'\\"roomId\\":\\"(\d+)\\"', res)[0]
+            # print(room_id)
             sec_uid = re.search(r'\\"sec_uid\\":\\"([^"]+)\\"', res).group(1)
             if sec_uid:
                 return sec_uid
@@ -35,7 +35,7 @@ async def get_sec_uid(room_id: str) -> str:
 async def get_user_info(sec_uid: str) -> dict[str, Any] | None:
     """
     获取抖音账户主页信息
-    :param name:
+    :param sec_uid:
     :return:
     """
     cookies = {
@@ -107,7 +107,7 @@ async def get_user_info(sec_uid: str) -> dict[str, Any] | None:
         'accept': 'application/json, text/plain, */*',
         'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
         'priority': 'u=1, i',
-        'referer': f'https://www.douyin.com/user/{name}',
+        'referer': f'https://www.douyin.com/user/{sec_uid}',
         'sec-ch-ua': '"Not)A;Brand";v="8", "Chromium";v="138", "Microsoft Edge";v="138"',
         'sec-ch-ua-mobile': '?0',
         'sec-ch-ua-platform': '"Windows"',
@@ -124,7 +124,7 @@ async def get_user_info(sec_uid: str) -> dict[str, Any] | None:
         'channel': 'channel_pc_web',
         'publish_video_strategy_type': '2',
         'source': 'channel_pc_web',
-        'sec_user_id': name,
+        'sec_user_id': sec_uid,
         'personal_center_strategy': '1',
         'profile_other_record_enable': '1',
         'land_to': '1',
@@ -199,7 +199,9 @@ async def get_user_info(sec_uid: str) -> dict[str, Any] | None:
 async def main():
     # 测试
     # res = await get_user_info('MS4wLjABAAAACdtHOv8XS_X_PTuqJ3WReO4ka7pBWg7fmzG4wjiIZVkUKFOVtbhizl9GkpdOJ-O1')\
-    res = await get_sec_uid('462118228930')
+    res = await get_sec_uid('282444794747')
+    pprint.pprint(res)
+    res = await get_sec_uid('yiyi13141')
     pprint.pprint(res)
 
 if __name__ == '__main__':

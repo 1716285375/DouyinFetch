@@ -77,7 +77,7 @@
             </div>
             <div class="info-item">
               <span class="info-label"><i class="fas fa-map-marker-alt"></i> 地区</span>
-              <span class="info-value">{{ userInfo.location.split(/[:：]/).pop().trim() }}</span>
+              <span class="info-value">{{ userInfo.location === null ? '' : userInfo.location.split(/[:：]/).pop().trim() }}</span>
             </div>
           </div>
 
@@ -236,26 +236,26 @@
     app.mount('#app');
   </script>
   <style>
-      /* 七彩主题核心配色 */
-:root {
-  --gradient-1: #ff9a9e;
-  --gradient-2: #fad0c4;
-  --gradient-3: #fad0c4;
-  --gradient-4: #d4fc79;
-  --gradient-5: #96e6a1;
-  --gradient-6: #84feb3;
-  --gradient-7: #80dfee;
-  --gradient-8: #8ea1e1;
-  --gradient-9: #cf94da;
-  --gradient-10: #d48373;
+    /* 七彩主题核心配色 */
+  :root {
+    --gradient-1: #ff9a9e;
+    --gradient-2: #fad0c4;
+    --gradient-3: #fad0c4;
+    --gradient-4: #d4fc79;
+    --gradient-5: #96e6a1;
+    --gradient-6: #84feb3;
+    --gradient-7: #80dfee;
+    --gradient-8: #8ea1e1;
+    --gradient-9: #cf94da;
+    --gradient-10: #d48373;
 
-  --bg-primary: #1a1a2e;
-  --bg-secondary: rgba(30, 35, 60, 0.85);
-  --text-primary: #f0f4f8;
-  --text-secondary: #b8c5d6;
-  --card-bg: rgba(30, 35, 60, 0.7);
-  --surface: rgba(40, 45, 75, 0.6);
-}
+    --bg-primary: #1a1a2e;
+    --bg-secondary: rgba(30, 35, 60, 0.85);
+    --text-primary: #f0f4f8;
+    --text-secondary: #b8c5d6;
+    --card-bg: rgba(30, 35, 60, 0.7);
+    --surface: rgba(40, 45, 75, 0.6);
+  }
 
 /* 全局渐变定义 */
 .gradient-text {
